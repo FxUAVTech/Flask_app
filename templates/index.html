@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor Data Display with Map</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div id="sensorData">
+            <div id="leftLogoContainer">
+                <img src="/static/logo.png" alt="FxUAV Logo" id="leftLogo">
+            </div>
+            
+            <div id="hudContainer">
+                <canvas id="hudCanvas" width="200" height="150"></canvas>
+            </div>
+            
+            <!-- Scrollable Data Container -->
+            <div id="dataContainer">
+                <!-- Collapsible Data Panels -->
+                <div class="panel">
+                    <button class="collapsible"><i class="fas fa-map-marker-alt"></i> Position Data</button>
+                    <div class="content">
+                        <div>Lat: <span id="Lat">N/A</span></div>
+                        <div>Lon: <span id="Lon">N/A</span></div>
+                        <div>Relative Altitude: <span id="Relative_alt">N/A</span></div>
+                    </div>
+                </div>
+    
+                <div class="panel">
+                    <button class="collapsible"><i class="fas fa-tachometer-alt"></i> Velocity Data</button>
+                    <div class="content">
+                        <div>Velocity X: <span id="Vx">N/A</span></div>
+                        <div>Velocity Y: <span id="Vy">N/A</span></div>
+                        <div>Velocity Z: <span id="Vz">N/A</span></div>
+                        <div>Groundspeed: <span id="Groundspeed">N/A</span></div>
+                    </div>
+                </div>
+    
+                <div class="panel">
+                    <button class="collapsible"><i class="fas fa-battery-three-quarters"></i> Battery Status</button>
+                    <div class="content">
+                        <div>Battery Voltage: <span id="Battery_voltage">N/A</span></div>
+                        <div>Battery Current: <span id="Battery_current">N/A</span></div>
+                        <div>Battery Remaining: <span id="Battery_remaining">N/A</span></div>
+                    </div>
+                </div>
+    
+                <div class="panel">
+                    <button class="collapsible"><i class="fas fa-compass"></i> Orientation</button>
+                    <div class="content">
+                        <div>Roll: <span id="Roll">N/A</span></div>
+                        <div>Pitch: <span id="Pitch">N/A</span></div>
+                        <div>Yaw: <span id="Yaw">N/A</span></div>
+                        <div>Heading: <span id="Heading">N/A</span></div>
+                    </div>
+                </div>
+    
+                <div class="panel">
+                    <button class="collapsible"><i class="fas fa-sync-alt"></i> Gyro Data</button>
+                    <div class="content">
+                        <div>Gyro X: <span id="Xgyro">N/A</span></div>
+                        <div>Gyro Y: <span id="Ygyro">N/A</span></div>
+                        <div>Gyro Z: <span id="Zgyro">N/A</span></div>
+                    </div>
+                </div>
+    
+                <div class="panel">
+                    <button class="collapsible"><i class="fas fa-magnet"></i> Magnetic Field</button>
+                    <div class="content">
+                        <div>Magnetic Field X: <span id="Xmag">N/A</span></div>
+                        <div>Magnetic Field Y: <span id="Ymag">N/A</span></div>
+                        <div>Magnetic Field Z: <span id="Zmag">N/A</span></div>
+                    </div>
+                </div>
+    
+                <div class="panel">
+                    <button class="collapsible"><i class="fas fa-wave-square"></i> Vibration</button>
+                    <div class="content">
+                        <div>Vibration X: <span id="Vibration_x">N/A</span></div>
+                        <div>Vibration Y: <span id="Vibration_y">N/A</span></div>
+                        <div>Vibration Z: <span id="Vibration_z">N/A</span></div>
+                    </div>
+                </div>
+    
+                <div class="panel">
+                    <button class="collapsible"><i class="fas fa-cut"></i> Clipping</button>
+                    <div class="content">
+                        <div>Clipping 0: <span id="Clipping_0">N/A</span></div>
+                        <div>Clipping 1: <span id="Clipping_1">N/A</span></div>
+                        <div>Clipping 2: <span id="Clipping_2">N/A</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <div id="map">
+            <!-- <header>
+                <img src="/static/logo.png" alt="Logo" id="logo">
+            </header> -->
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Map Initialization
+        var map = L.map('map', { 
+    attributionControl: false 
+}).setView([20, 78], 5); // Default view
+        L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 100,
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        }).addTo(map);
+
+        // Replace marker with a custom drone image
+        var droneIcon = L.icon({
+            iconUrl: '/static/drone2.png', // Path to your drone image
+            iconSize: [30, 30],           // Size of the icon [width, height]
+            iconAnchor: [20, 20],         // Anchor point relative to the image center
+            popupAnchor: [0, -20]         // Popup position relative to the icon
+        });
+
+        // Use the custom drone marker
+        var marker = L.marker([25, 78], { icon: droneIcon }).addTo(map);
+
+        // Function to update marker with drone icon
+        function updateMap(lat, lon) {
+            map.setView([lat, lon], 13);          // Update map view
+            marker.setLatLng([lat, lon]);         // Update marker position
+        }
+
+        // HUD Canvas Animation
+        const canvas = document.getElementById('hudCanvas');
+        const ctx = canvas.getContext('2d');
+        let roll = 0, pitch = 0, yaw = 0;
+        let targetData = { roll: 0, pitch: 0, yaw: 0 };
+        const SMOOTHING_FACTOR = 1; // Adjust this to make transitions smoother
+        const MULTIPLIER = 60; // Adjust this value to make changes more noticeable
+
+        function drawCurvedScale() {
+    const radius = 70; // Radius of the curved scale
+    const startAngle = -Math.PI / 3; // Start angle of the arc (rotated -60°)
+    const endAngle = Math.PI / 3; // End angle of the arc (+60°)
+    const tickLengthMajor = 5; // Length of major tick marks
+    const tickLengthMinor = 3; // Length of minor tick marks
+
+    ctx.save();
+    // Translate to the vertical center of the canvas, slightly above the horizon
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2; // Horizon level
+    ctx.translate(centerX, centerY);
+
+    // Rotate the entire scale 90° counterclockwise
+    ctx.rotate(-Math.PI / 2);
+
+    // Rotate the curved scale based on the roll value
+    ctx.rotate((-roll * Math.PI) / 180);
+
+    // Draw the curved scale arc
+    ctx.beginPath();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.arc(0, 0, radius, startAngle, endAngle);
+    ctx.stroke();
+
+    // Draw tick marks and labels
+    const importantDegrees = [10, 20, 30, 45, 60]; // Only these degrees will have labels
+    const tickStep = 5; // Step for tick marks in degrees
+    for (let angle = -60; angle <= 60; angle += tickStep) {
+        const isMajor = importantDegrees.includes(Math.abs(angle));
+        const tickLength = isMajor ? tickLengthMajor : tickLengthMinor;
+        const rad = (angle * Math.PI) / 180; // Convert angle to radians
+
+        // Calculate tick start and end points
+        const xStart = radius * Math.cos(rad);
+        const yStart = radius * Math.sin(rad);
+        const xEnd = (radius - tickLength) * Math.cos(rad);
+        const yEnd = (radius - tickLength) * Math.sin(rad);
+
+        // Draw the tick mark
+        ctx.beginPath();
+        ctx.moveTo(xStart, yStart);
+        ctx.lineTo(xEnd, yEnd);
+        ctx.stroke();
+
+        // Draw labels only for important degrees
+        if (isMajor) {
+            const labelX = (radius - tickLength - 8) * Math.cos(rad); // Adjusted label position
+            const labelY = (radius - tickLength - 8) * Math.sin(rad);
+            ctx.font = "8px Arial"; // Font size for labels
+            ctx.fillStyle = "#ffffff";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(Math.abs(angle).toString(), labelX, labelY);
+        }
+    }
+
+    ctx.restore();
+    // Draw the fixed red pointer
+    drawRedPointer(centerX, centerY, radius);
+}
+
+// Function to draw a red pointer
+function drawRedPointer(centerX, centerY, radius) {
+    ctx.save();
+    ctx.translate(centerX, centerY);
+
+    // Adjust pointer color and size
+    ctx.fillStyle = "red";
+
+    // Draw a triangle for the pointer
+    ctx.beginPath();
+    ctx.moveTo(0, -radius ); // Point of the triangle
+    ctx.lineTo(-5, -radius +10);    // Bottom-left of the triangle
+    ctx.lineTo(5, -radius +10);     // Bottom-right of the triangle
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawHUD() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Center coordinates
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    // Save context state and set up rotation and translation for pitch and roll
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate((-roll * Math.PI) / 180); // Allow full 360° rotation for roll
+
+    const MAX_PITCH = 20;  // Initial max pitch for visible range
+    const EXTENDED_PITCH_LIMIT = 60;  // Extend scale beyond the visible range
+
+    // Calculate the horizon line position based on pitch
+    const horizonOffsetY = (pitch / MAX_PITCH) * (canvas.height / 2);
+
+    // Extend sky and ground to cover full height if pitch goes beyond canvas boundaries
+    const extendedSkyY = Math.min(horizonOffsetY, canvas.height / 2);
+    const extendedGroundY = Math.max(horizonOffsetY, -canvas.height / 2);
+
+    // Draw sky and ground
+    // Create gradient for the sky
+const gradient = ctx.createLinearGradient(0, -canvas.height, 0, canvas.height / 2);
+gradient.addColorStop(0, "#00008B"); // Light blue at the top
+gradient.addColorStop(1, "#00BFFF"); // Darker blue at the bottom
+
+// Apply gradient as the fill style
+ctx.fillStyle = gradient;
+ctx.fillRect(-canvas.width, -canvas.height + extendedSkyY, canvas.width * 2, canvas.height * 2);
+
+
+    // Create gradient for the ground
+const groundGradient = ctx.createLinearGradient(0, extendedGroundY, 0, canvas.height);
+groundGradient.addColorStop(0, "#006400"); // Lighter green at the top
+groundGradient.addColorStop(1, "#00FF00"); // Darker green at the bottom
+
+// Apply gradient as the fill style
+ctx.fillStyle = groundGradient;
+ctx.fillRect(-canvas.width, extendedGroundY, canvas.width * 2, canvas.height * 2);
+
+
+    // Draw the moving white horizon line at the adjusted horizonOffsetY position
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-canvas.width, horizonOffsetY);
+    ctx.lineTo(canvas.width, horizonOffsetY);
+    ctx.stroke();
+
+    // Draw the scale lines relative to the horizonOffsetY, extending beyond ±30° if needed
+    const SMALL_LINE_LENGTH = 20;   // Length of smaller lines (5°, 15°, etc.)
+    const LARGE_LINE_LENGTH = 40;   // Length of larger lines (10°, 20°, etc.)
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+
+    // Draw scale lines up to EXTENDED_PITCH_LIMIT, allowing more degrees to appear as the nose tilts
+    for (let i = -EXTENDED_PITCH_LIMIT; i <= EXTENDED_PITCH_LIMIT; i += 5) {
+        const yOffset = (i / MAX_PITCH) * (canvas.height / 2) + horizonOffsetY;
+
+        if (yOffset > -canvas.height / 2 && yOffset < canvas.height / 2) {
+            const lineLength = (i % 10 === 0) ? LARGE_LINE_LENGTH : SMALL_LINE_LENGTH;
+
+            ctx.beginPath();
+            ctx.moveTo(-lineLength / 2, yOffset);
+            ctx.lineTo(lineLength / 2, yOffset);
+            ctx.stroke();
+
+            const displayValue = yOffset < horizonOffsetY ? Math.abs(i) : -Math.abs(i);
+
+            ctx.font = "8px Arial";
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(`${displayValue}°`, lineLength / 2 + 5, yOffset + 3);
+        }
+    }
+
+    ctx.restore();
+
+    // Call the drawCurvedScale function
+    drawCurvedScale();
+
+    // Display Roll, Pitch, Yaw values on HUD
+    // ctx.font = "10px Arial";
+    // ctx.fillStyle = "#fffffg";
+    // ctx.fillText(`Roll: ${roll.toFixed(1)}°`, 10, 100);
+    // ctx.fillText(`Pitch: ${pitch.toFixed(1)}°`, 10, 120);
+    // ctx.fillText(`Yaw: ${yaw.toFixed(1)}°`, 10, 140);
+}
+
+
+        function refreshData() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    for (const key in data) {
+                        const element = document.getElementById(key);
+                        if (element) {
+                            element.textContent = parseFloat(data[key]).toFixed(4) || "N/A";
+                        }
+                    }
+                    if (data.Lat && data.Lon) {
+                        updateMap(parseFloat(data.Lat), parseFloat(data.Lon));
+                    }
+
+                    targetData.roll = parseFloat(data.Roll) * MULTIPLIER || 0;
+                    targetData.pitch = parseFloat(data.Pitch) * MULTIPLIER || 0;
+                    targetData.yaw = parseFloat(data.Yaw) * MULTIPLIER || 0;
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    document.getElementById('sensorData').innerHTML = 'Failed to load data: ' + error.message;
+                });
+
+            setTimeout(refreshData, 200); // Adjust this to 200ms or lower as needed
+        }
+
+        function animateHUD() {
+            roll += (targetData.roll - roll) * SMOOTHING_FACTOR;
+            pitch += (targetData.pitch - pitch) * SMOOTHING_FACTOR;
+            yaw += (targetData.yaw - yaw) * SMOOTHING_FACTOR;
+
+            drawHUD();
+            requestAnimationFrame(animateHUD);
+        }
+
+        requestAnimationFrame(animateHUD);
+        refreshData();
+
+        // Collapsible Panels
+        document.addEventListener("DOMContentLoaded", function () {
+            var coll = document.getElementsByClassName("collapsible");
+            for (let i = 0; i < coll.length; i++) {
+                coll[i].addEventListener("click", function () {
+                    this.classList.toggle("active");
+                    var content = this.nextElementSibling;
+                    if (content.style.display === "block") {
+                        content.style.display = "none";
+                    } else {
+                        content.style.display = "block";
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
